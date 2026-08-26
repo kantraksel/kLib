@@ -1,13 +1,21 @@
 #pragma once
 #include <memory>
+#include <limits>
 #if _DEBUG
 #include <stdexcept>
 #endif
 
-template<typename T>
-concept TrivialType = std::is_trivially_copyable_v<T>;
+// Windows SDK defs
+#undef min
+#undef max
 
-template<TrivialType T, typename S = size_t>
+template<typename T>
+concept DefaultConstructible = std::conjunction_v<std::is_default_constructible<T>, std::is_destructible<T>>;
+
+template<typename A, typename B>
+concept SimilarIntegrals = std::conjunction_v<std::is_integral<A>, std::is_integral<B>, std::bool_constant<sizeof(A) == sizeof(B)>>;
+
+template<DefaultConstructible T, typename S = size_t>
 class FixedArray
 {
 private:
@@ -39,7 +47,19 @@ public:
 		mpArray = new T[n];
 	}
 
-	FixedArray(const FixedArray& other)
+	~FixedArray()
+	{
+		if (mOwnsArray)
+			delete[] mpArray;
+	}
+
+private:
+	FixedArray(T* pArray, S n, bool ownsArray) : mpArray(pArray), mSize(n), mOwnsArray(ownsArray)
+	{
+	}
+
+public:
+	FixedArray(const FixedArray& other) requires std::is_trivially_copyable_v<T>
 	{
 		if (other.mSize == 0)
 		{
@@ -61,23 +81,8 @@ public:
 			mpArray = other.mpArray;
 	}
 
-private:
-	FixedArray(T* pArray, S n, bool ownsArray) : mpArray(pArray), mSize(n), mOwnsArray(ownsArray)
+	FixedArray& operator=(const FixedArray& other) requires std::is_trivially_copyable_v<T>
 	{
-	}
-
-	FixedArray(const T* pArray, S n, bool ownsArray) : mpArray(const_cast<T*>(pArray)), mSize(n), mOwnsArray(ownsArray)
-	{
-	}
-
-public:
-	FixedArray& operator=(const FixedArray& other)
-	{
-#if _DEBUG
-		if (this == std::addressof(other))
-			throw std::logic_error("Copying self to self is forbidden in FixedArray");
-#endif
-
 		if (mOwnsArray)
 			delete[] mpArray;
 
@@ -103,7 +108,7 @@ public:
 		return *this;
 	}
 
-	FixedArray(FixedArray&& other)
+	FixedArray(FixedArray&& other) noexcept
 	{
 		mOwnsArray = other.mOwnsArray;
 		mSize = other.mSize;
@@ -113,13 +118,8 @@ public:
 		other.mpArray = nullptr;
 	}
 
-	FixedArray& operator=(FixedArray&& other)
+	FixedArray& operator=(FixedArray&& other) noexcept
 	{
-#if _DEBUG
-		if (this == std::addressof(other))
-			throw std::logic_error("Moving self to self is forbidden in FixedArray");
-#endif
-
 		if (mOwnsArray)
 			delete[] mpArray;
 
@@ -137,12 +137,6 @@ public:
 	{
 		reset();
 		return *this;
-	}
-
-	~FixedArray()
-	{
-		if (mOwnsArray)
-			delete[] mpArray;
 	}
 
 	T& operator[](S i) const
@@ -163,22 +157,12 @@ public:
 		return mpArray;
 	}
 
-	T* operator&()
-	{
-		return mpArray;
-	}
-
 	T* data()
 	{
 		return mpArray;
 	}
 
 	operator const T*() const
-	{
-		return mpArray;
-	}
-
-	const T* operator&() const
 	{
 		return mpArray;
 	}
@@ -208,15 +192,10 @@ public:
 		mOwnsArray = false;
 	}
 
-	FixedArray span(S offset, S size)
+	FixedArray span(S offset, S size = std::numeric_limits<S>::max())
 	{
-#if _DEBUG
-		if (size < 0)
-			throw std::out_of_range("Size is out of range");
-
-		if (!mpArray)
-			throw std::logic_error("Array pointer is null");
-#endif
+		if (mSize == 0 || size <= 0)
+			return nullptr;
 
 		auto pArray = mpArray + offset;
 		auto pArrayBound = mpArray + mSize;
@@ -224,7 +203,22 @@ public:
 			return nullptr;
 		auto maxSize = static_cast<S>(pArrayBound - pArray);
 
-		size = std::min(std::max(0ull, size), maxSize);
+		size = std::min(size, maxSize);
+		return FixedArray(pArray, size, false);
+	}
+
+	const FixedArray span(S offset, S size = std::numeric_limits<S>::max()) const
+	{
+		if (mSize == 0 || size <= 0)
+			return nullptr;
+
+		auto pArray = mpArray + offset;
+		auto pArrayBound = mpArray + mSize;
+		if (pArray < mpArray || pArrayBound <= pArray)
+			return nullptr;
+		auto maxSize = static_cast<S>(pArrayBound - pArray);
+
+		size = std::min(size, maxSize);
 		return FixedArray(pArray, size, false);
 	}
 
@@ -238,39 +232,75 @@ public:
 		return FixedArray(mpArray, mSize, false);
 	}
 
-	static FixedArray CreateArrayRef(T* pArray, S n)
+	S copyFrom(const FixedArray& other) requires std::is_trivially_copyable_v<T>
 	{
+		S size = std::min(mSize, other.mSize);
+		if (size == 0)
+			return 0;
+
+		memcpy(mpArray, other.mpArray, size * sizeof(T));
+		return size;
+	}
+
+	S copyTo(FixedArray& other) const requires std::is_trivially_copyable_v<T>
+	{
+		S size = std::min(mSize, other.mSize);
+		if (size == 0)
+			return 0;
+
+		memcpy(other.mpArray, mpArray, size * sizeof(T));
+		return size;
+	}
+
+	static FixedArray CreateRef(T* pArray, S n)
+	{
+		if (n <= 0)
+			return nullptr;
 		return FixedArray(pArray, n, false);
 	}
 
-	static const FixedArray CreateArrayRef(const T* pArray, S n)
+	static const FixedArray CreateRef(const T* pArray, S n)
 	{
-		return FixedArray(pArray, n, false);
+		if (n <= 0)
+			return nullptr;
+		return FixedArray(const_cast<T*>(pArray), n, false);
 	}
 
-	static FixedArray CreateArrayRefUnsafe(void* pArray, S n)
+	template<typename E>
+	static FixedArray CreateRef(E* pArray, S n) requires SimilarIntegrals<T, E>
 	{
-		auto tArray = reinterpret_cast<T*>(pArray);
-		return FixedArray(tArray, n, false);
-	}
-
-	static const FixedArray CreateArrayRefUnsafe(const void* pArray, S n)
-	{
+		if (n <= 0)
+			return nullptr;
 		auto tArray = reinterpret_cast<const T*>(pArray);
 		return FixedArray(tArray, n, false);
 	}
 
-	static FixedArray WrapArray(T* pArray, S n)
+	template<typename E>
+	static const FixedArray CreateRef(const E* pArray, S n) requires SimilarIntegrals<T, E>
 	{
-		return FixedArray(pArray, n, n > 0);
-	}
-	
-	static const FixedArray WrapArray(const T* pArray, S n)
-	{
-		return FixedArray(pArray, n, n > 0);
+		if (n <= 0)
+			return nullptr;
+		auto tArray = reinterpret_cast<const T*>(pArray);
+		return FixedArray(const_cast<T*>(tArray), n, false);
 	}
 
-	static FixedArray Copy(const T* pArray, S n)
+	static FixedArray CreateRefUnsafe(void* pArray, S n)
+	{
+		if (n <= 0)
+			return nullptr;
+		auto tArray = reinterpret_cast<T*>(pArray);
+		return FixedArray(tArray, n, false);
+	}
+
+	static const FixedArray CreateRefUnsafe(const void* pArray, S n)
+	{
+		if (n <= 0)
+			return nullptr;
+		auto tArray = reinterpret_cast<const T*>(pArray);
+		return FixedArray(const_cast<T*>(tArray), n, false);
+	}
+
+	static FixedArray Copy(const T* pArray, S n) requires std::is_trivially_copyable_v<T>
 	{
 		if (n <= 0)
 			return nullptr;
@@ -280,7 +310,7 @@ public:
 		return out;
 	}
 
-	static FixedArray Copy(const FixedArray& array)
+	static FixedArray Copy(const FixedArray& array) requires std::is_trivially_copyable_v<T>
 	{
 		return Copy(array, array.size());
 	}

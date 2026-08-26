@@ -92,11 +92,8 @@ static LoggerInit init;
 LoggerImpl::LoggerImpl()
 {
 	timestampEnabled = true;
-#if _DEBUG
 	consoleOut = true;
-#else
-	consoleOut = false;
-#endif
+
 #if _WIN32
 	HANDLE hOut;
 #if _DEBUG
@@ -116,6 +113,8 @@ LoggerImpl::LoggerImpl()
 	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 	GetConsoleMode(hOut, &mode);
 	SetConsoleMode(hOut, mode | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
+	consoleOut = hOut != NULL;
 
 	std::cin.clear();
 	std::cout.clear();
