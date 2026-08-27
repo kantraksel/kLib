@@ -6,7 +6,11 @@
 
 namespace Logger
 {
+#if _WIN32
 	void OpenLogFile(const std::wstring& name);
+#else
+	void OpenLogFile(const std::string& name);
+#endif
 	bool IsLogOpen();
 	void SetTimestamp(bool);
 	void SetConsoleOut(bool);

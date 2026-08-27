@@ -1,9 +1,12 @@
 #include <chrono>
 #include <thread>
+#if _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#endif
 #include "Time.h"
 
+#if _WIN32
 // guaranteed 1MHz+ (<1us)
 static long long GetFrequency()
 {
@@ -29,6 +32,19 @@ long long Time::SteadyNowInt()
 	QueryPerformanceCounter(&ctr);
 	return ctr.QuadPart / FrequencyMilli;
 }
+#else
+double Time::SteadyNow()
+{
+	std::chrono::duration<double, std::milli> now = std::chrono::steady_clock::now().time_since_epoch();
+	return now.count();
+}
+
+long long Time::SteadyNowInt()
+{
+	auto now = std::chrono::steady_clock::now().time_since_epoch();
+	return std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+}
+#endif
 
 void Time::Sleep(unsigned int ms)
 {

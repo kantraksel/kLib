@@ -1,4 +1,5 @@
 #pragma once
+#include <cstring>
 #include <memory>
 #include <limits>
 #if _DEBUG
@@ -152,17 +153,7 @@ public:
 		return mpArray[i];
 	}
 
-	operator T*()
-	{
-		return mpArray;
-	}
-
 	T* data()
-	{
-		return mpArray;
-	}
-
-	operator const T*() const
 	{
 		return mpArray;
 	}
@@ -271,7 +262,7 @@ public:
 	{
 		if (n <= 0)
 			return nullptr;
-		auto tArray = reinterpret_cast<const T*>(pArray);
+		auto tArray = reinterpret_cast<T*>(pArray);
 		return FixedArray(tArray, n, false);
 	}
 
@@ -312,8 +303,14 @@ public:
 
 	static FixedArray Copy(const FixedArray& array) requires std::is_trivially_copyable_v<T>
 	{
-		return Copy(array, array.size());
+		return Copy(array.data(), array.size());
 	}
+
+	/* Use this after upgrading from older version */
+	/*
+	void* operator&() = delete;
+	const void* operator&() const = delete;
+	*/
 };
 
 using FixedArrayChar = FixedArray<char, unsigned int>;

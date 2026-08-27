@@ -44,12 +44,16 @@ struct LoggerImpl
 	void LogRaw(const std::string_view&, ColorEx, LogLevel);
 	static void LogConsole(const std::string_view&, ColorEx);
 
+#if _WIN32
 	void OpenLogFile(const std::wstring&);
+#else
+	void OpenLogFile(const std::string&);
+#endif
 	void LogFormat(const std::string_view&, LogLevel);
 	void Log(const std::string_view&, ColorEx, LogLevel);
 };
 
-static alignas(LoggerImpl) unsigned char buffer[sizeof(LoggerImpl)]{};
+alignas(LoggerImpl) static unsigned char buffer[sizeof(LoggerImpl)]{};
 static LoggerImpl* pInstance = nullptr;
 
 #if _DEBUG
@@ -122,7 +126,11 @@ LoggerImpl::LoggerImpl()
 #endif
 }
 
+#if _WIN32
 void LoggerImpl::OpenLogFile(const std::wstring& name)
+#else
+void LoggerImpl::OpenLogFile(const std::string& name)
+#endif
 {
 	std::lock_guard lock(mutex);
 
@@ -241,7 +249,11 @@ static void LogEx(const std::string_view& str, Logger::RGB rgb, LogLevel level)
 }
 
 // public Logger
+#if _WIN32
 void Logger::OpenLogFile(const std::wstring& name)
+#else 
+void Logger::OpenLogFile(const std::string& name)
+#endif
 {
 	LoggerInit::Construct();
 	pInstance->OpenLogFile(name);

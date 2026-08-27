@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <functional>
 
 template <auto Func>
@@ -64,9 +65,9 @@ public:
 	template <class Fp>
 	Function(Fp func)
 	{
-		if constexpr (std::is_convertible_v<Fp, void*>)
+		if constexpr (std::is_pointer_v<Fp>)
 		{
-			param = func;
+			param = reinterpret_cast<void*>(func);
 			wrap = [](void* param, Args... args)
 				{
 					auto func = reinterpret_cast<Func*>(param);
