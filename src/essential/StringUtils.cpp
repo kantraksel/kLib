@@ -209,7 +209,7 @@ std::string StringUtils::Trim(const std::string& str)
 	{
 		if (!IsWhiteSpace(str[i]))
 		{
-			start = i;
+			start = static_cast<int>(i);
 			break;
 		}
 	}
@@ -217,11 +217,11 @@ std::string StringUtils::Trim(const std::string& str)
 		return {};
 
 	int end = 0;
-	for (int i = str.length() - 1; i >= 0; --i)
+	for (int i = static_cast<int>(str.length() - 1); i >= 0; --i)
 	{
 		if (!IsWhiteSpace(str[i]))
 		{
-			end = i;
+			end = static_cast<int>(i);
 			break;
 		}
 	}

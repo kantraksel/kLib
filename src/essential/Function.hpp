@@ -122,7 +122,6 @@ public:
 		return wrap(param, std::forward<Args>(args)...);
 	}
 
-	//unofficial amendments
 	Function& operator=(const Function& other)
 	{
 		if (reinterpret_cast<uintptr_t>(wrap) == DYNAMIC)
@@ -175,6 +174,20 @@ public:
 	{
 	}
 
+	FunctionS(const FunctionS& other)
+	{
+		wrap = other.wrap;
+		param = other.param;
+	}
+
+	FunctionS(FunctionS&& other)
+	{
+		wrap = other.wrap;
+		param = other.param;
+		other.wrap = nullptr;
+		other.param = nullptr;
+	}
+
 	template <class Fp>
 	FunctionS(Fp func)
 	{
@@ -219,6 +232,29 @@ public:
 	Result operator()(Args... args) const
 	{
 		return wrap(param, std::forward<Args>(args)...);
+	}
+
+	FunctionS& operator=(const FunctionS& other)
+	{
+		wrap = other.wrap;
+		param = other.param;
+
+		return *this;
+	}
+
+	FunctionS& operator=(FunctionS&& other)
+	{
+		wrap = other.wrap;
+		param = other.param;
+		other.wrap = nullptr;
+		other.param = nullptr;
+
+		return *this;
+	}
+
+	bool operator==(const FunctionS& other) const
+	{
+		return wrap == other.wrap && param == other.param;
 	}
 
 private:

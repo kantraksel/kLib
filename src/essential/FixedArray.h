@@ -16,7 +16,21 @@ concept DefaultConstructible = std::conjunction_v<std::is_default_constructible<
 template<typename A, typename B>
 concept SimilarIntegrals = std::conjunction_v<std::is_integral<A>, std::is_integral<B>, std::bool_constant<sizeof(A) == sizeof(B)>>;
 
-template<DefaultConstructible T, typename S = size_t>
+template <typename T>
+struct FixedArrayAllocator
+{
+	static T* allocate(size_t n)
+	{
+		return new T[n];
+	}
+
+	static void deallocate(T* p)
+	{
+		delete[] p;
+	}
+};
+
+template<DefaultConstructible T, typename S = size_t, typename Alloc = FixedArrayAllocator<T>>
 class FixedArray
 {
 private:
@@ -45,13 +59,13 @@ public:
 
 		mOwnsArray = true;
 		mSize = n;
-		mpArray = new T[n];
+		mpArray = Alloc::allocate(n);
 	}
 
 	~FixedArray()
 	{
 		if (mOwnsArray)
-			delete[] mpArray;
+			Alloc::deallocate(mpArray);
 	}
 
 private:
@@ -75,7 +89,7 @@ public:
 
 		if (mOwnsArray)
 		{
-			mpArray = new T[mSize];
+			mpArray = Alloc::allocate(mSize);
 			memcpy(mpArray, other.mpArray, mSize * sizeof(T));
 		}
 		else
@@ -85,7 +99,7 @@ public:
 	FixedArray& operator=(const FixedArray& other) requires std::is_trivially_copyable_v<T>
 	{
 		if (mOwnsArray)
-			delete[] mpArray;
+			Alloc::deallocate(mpArray);
 
 		if (other.mSize == 0)
 		{
@@ -97,10 +111,10 @@ public:
 
 		mOwnsArray = other.mOwnsArray;
 		mSize = other.mSize;
-		
+
 		if (mOwnsArray)
 		{
-			mpArray = new T[mSize];
+			mpArray = Alloc::allocate(mSize);
 			memcpy(mpArray, other.mpArray, mSize * sizeof(T));
 		}
 		else
@@ -122,7 +136,7 @@ public:
 	FixedArray& operator=(FixedArray&& other) noexcept
 	{
 		if (mOwnsArray)
-			delete[] mpArray;
+			Alloc::deallocate(mpArray);
 
 		mOwnsArray = other.mOwnsArray;
 		mSize = other.mSize;
@@ -173,10 +187,15 @@ public:
 		return mSize == 0;
 	}
 
+	explicit operator bool() const
+	{
+		return mSize != 0;
+	}
+
 	void reset()
 	{
 		if (mOwnsArray)
-			delete[] mpArray;
+			Alloc::deallocate(mpArray);
 
 		mpArray = nullptr;
 		mSize = 0;
@@ -296,7 +315,7 @@ public:
 		if (n <= 0)
 			return nullptr;
 
-		auto out = FixedArray(new T[n], n, true);
+		auto out = FixedArray(Alloc::allocate(n), n, true);
 		memcpy(out.mpArray, pArray, n * sizeof(T));
 		return out;
 	}
