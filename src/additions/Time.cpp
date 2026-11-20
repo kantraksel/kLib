@@ -1,10 +1,11 @@
+// kLib: Last changed 27.08.2026
 #include <chrono>
 #include <thread>
 #if _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
-#include "Time.h"
+#include "Time.hpp"
 
 #if _WIN32
 // guaranteed 1MHz+ (<1us)

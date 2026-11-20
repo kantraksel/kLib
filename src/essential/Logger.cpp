@@ -1,3 +1,4 @@
+// kLib: Last changed 27.08.2026
 #include <chrono>
 #include <functional>
 #include <fstream>
@@ -8,8 +9,8 @@
 	#include <Windows.h>
 #endif
 #define LOGGER_ENABLE_CALLBACK
-#include "Logger.h"
-#include "StringUtils.h"
+#include "Logger.hpp"
+#include "StringUtils.hpp"
 
 enum Color : char
 {

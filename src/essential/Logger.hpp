@@ -1,3 +1,4 @@
+// kLib: Last changed 27.08.2026
 #pragma once
 #include <format>
 #ifdef LOGGER_ENABLE_CALLBACK

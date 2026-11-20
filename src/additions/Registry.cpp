@@ -1,4 +1,5 @@
-#include "Registry.h"
+// kLib: Last changed 21.05.2026
+#include "Registry.hpp"
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 

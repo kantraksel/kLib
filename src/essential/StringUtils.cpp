@@ -1,3 +1,4 @@
+// kLib: Last changed 20.11.2026
 #include <format>
 #if _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -8,7 +9,7 @@
 	#include <comdef.h>
 #endif
 #endif
-#include "StringUtils.h"
+#include "StringUtils.hpp"
 
 #if _WIN32
 std::wstring StringUtils::Utf8ToWideString(const std::string_view& str)

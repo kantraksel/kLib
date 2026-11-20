@@ -1,3 +1,4 @@
+// kLib: Last changed 21.05.2026
 #pragma once
 #include <string>
 #include <optional>

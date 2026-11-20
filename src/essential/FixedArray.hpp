@@ -1,3 +1,4 @@
+// kLib: Last changed 20.11.2026
 #pragma once
 #include <cstring>
 #include <memory>
